@@ -75,7 +75,8 @@ class AdamWBF16(Optimizer):
                         state["exp_avg_sq"] = torch.zeros_like(p, memory_format=torch.preserve_format)
                         # accumulated shift that should be added to p, but wasn't because of truncation
                         # true value is p + shift
-                        state["shift"] = torch.zeros_like(p, memory_format=torch.preserve_format)
+                        # NOTE(yaojie): Use fp32 to avoid precision loss
+                        state["shift"] = torch.zeros_like(p, memory_format=torch.preserve_format, dtype=torch.float32)
                         # using decay at each step will work only for float32, so we just remember how much owe to decay
                         # and decay once in n iterations
                         # Each weight has its own starting point to avoid simultaneous updates in all weights
@@ -165,7 +166,7 @@ def _make_step(
 
     # Originally:
     # shift.add_(buffer.sub_(p))
-    add_stochastic_(shift, buffer.sub_(p))
+    shift.add_(buffer.sub_(p))
 
     if decay_this_iteration > 0:
         shift.add_(p, alpha=-decay_this_iteration)
